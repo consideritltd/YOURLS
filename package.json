@@ -1,0 +1,14 @@
+{
+  "name": "zipl",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "express-rate-limit": "^8.5.2",
+    "mysql2": "^3.11.0"
+  }
+}
