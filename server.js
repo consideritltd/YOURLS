@@ -1,7 +1,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { initTables } = require('./db');
-const { createLink, getLink, getRecentLinks, recordClick, getClicks, cleanupExpired } = require('./links');
+const { createLink, getLink, recordClick, cleanupExpired } = require('./links');
 const { renderPage, renderRedirect } = require('./views');
 
 const app = express();
@@ -22,18 +22,12 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/', async (req, res) => {
-  try {
-    const links = await getRecentLinks();
-    res.send(renderPage({ links }));
-  } catch (err) {
-    console.error('GET / error:', err);
-    res.status(500).send(renderPage({ message: 'Database error' }));
-  }
+  res.send(renderPage({}));
 });
 
 app.post('/shorten', shortenLimiter, async (req, res) => {
   const token = req.body['cf-turnstile-response'];
-  if (token && process.env.TURNSTILE_SECRET) {
+  if (process.env.TURNSTILE_SECRET) {
     const verify = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -48,42 +42,27 @@ app.post('/shorten', shortenLimiter, async (req, res) => {
 
   const url = req.body.url;
   if (!url) {
-    const links = await getRecentLinks();
-    return res.status(400).send(renderPage({ links, message: 'URL is required' }));
+    return res.status(400).send(renderPage({ message: 'URL is required' }));
   }
 
   let parsed;
   try {
     parsed = new URL(url);
   } catch {
-    const links = await getRecentLinks();
-    return res.status(400).send(renderPage({ links, message: 'Invalid URL' }));
+    return res.status(400).send(renderPage({ message: 'Invalid URL' }));
   }
 
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    const links = await getRecentLinks();
-    return res.status(400).send(renderPage({ links, message: 'Only http and https URLs are allowed' }));
+    return res.status(400).send(renderPage({ message: 'Only http and https URLs are allowed' }));
   }
 
   try {
     const slug = await createLink(url);
     const shortUrl = `https://zipl.uk/${slug}`;
-    const links = await getRecentLinks();
-    res.send(renderPage({ links, shortUrl }));
+    res.send(renderPage({ shortUrl }));
   } catch (err) {
     console.error('POST /shorten error:', err);
-    const links = await getRecentLinks();
-    res.status(500).send(renderPage({ links, message: 'Failed to create link' }));
-  }
-});
-
-app.get('/clicks/:id', async (req, res) => {
-  try {
-    const clicks = await getClicks(parseInt(req.params.id, 10));
-    res.json(clicks);
-  } catch (err) {
-    console.error('GET /clicks error:', err);
-    res.status(500).json([]);
+    res.status(500).send(renderPage({ message: 'Failed to create link' }));
   }
 });
 

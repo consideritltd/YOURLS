@@ -1,20 +1,4 @@
-function renderPage({ links = [], message = null, shortUrl = null }) {
-  const linkRows = links.map(l => {
-    const expiresAt = new Date(l.expires_at);
-    const now = new Date();
-    const hoursLeft = Math.max(0, Math.round((expiresAt - now) / 3600000));
-    return `
-      <tr class="link-row" data-link-id="${l.id}">
-        <td class="slug-cell"><a href="/${l.slug}" target="_blank">${l.slug}</a></td>
-        <td class="url-cell">${escapeHtml(l.url)}</td>
-        <td>${l.click_count}</td>
-        <td>${hoursLeft}h</td>
-      </tr>
-      <tr class="click-detail-row" id="details-${l.id}" style="display:none">
-        <td colspan="4"><div class="click-details">Loading...</div></td>
-      </tr>`;
-  }).join('');
-
+function renderPage({ message = null, shortUrl = null }) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -55,9 +39,6 @@ function renderPage({ links = [], message = null, shortUrl = null }) {
       .btn { width: 100%; }
       .result { flex-direction: column; text-align: center; }
       .result a { font-size: 15px; word-break: break-all; }
-      table { font-size: 12px; }
-      th, td { padding: 6px 8px; }
-      .url-cell { font-size: 11px; }
     }
     .logo { height: 72px; margin-bottom: 12px; }
     .brand { font-size: 36px; font-weight: 800; color: #0B1E3F; margin-bottom: 4px; letter-spacing: -1px; }
@@ -88,21 +69,9 @@ function renderPage({ links = [], message = null, shortUrl = null }) {
     }
     .copy-btn:hover { background: #1a3a6a; }
     .error { background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 12px; margin-bottom: 16px; color: #991B1B; }
-    table { width: 100%; border-collapse: collapse; text-align: left; margin-top: 24px; table-layout: fixed; }
-    th { font-size: 12px; text-transform: uppercase; color: #5A6678; padding: 8px 12px; border-bottom: 2px solid #E2E8F0; }
-    td { padding: 10px 12px; border-bottom: 1px solid #F1F5F9; font-size: 14px; }
-    .link-row { cursor: pointer; }
-    .link-row:hover { background: #F8FAFC; }
-    .slug-cell a { color: #F36C2C; font-weight: 600; text-decoration: none; }
-    .url-cell { color: #5A6678; word-break: break-all; overflow-wrap: anywhere; }
-    .click-details { text-align: left; padding: 8px; font-size: 13px; color: #5A6678; }
-    .click-details table { margin-top: 4px; }
-    .click-details th { font-size: 11px; }
-    .click-details td { font-size: 12px; padding: 4px 8px; }
     .footer { margin-top: 32px; font-size: 12px; color: #5A6678; }
     .footer a { color: #F36C2C; text-decoration: none; }
     .footer a:hover { text-decoration: underline; }
-    .empty { color: #94A3B8; font-size: 14px; margin-top: 24px; }
   </style>
 </head>
 <body>
@@ -128,41 +97,8 @@ function renderPage({ links = [], message = null, shortUrl = null }) {
       <button class="copy-btn" onclick="navigator.clipboard.writeText('${escapeHtml(shortUrl)}');this.textContent='Copied!'">Copy</button>
     </div>` : ''}
 
-    ${links.length > 0 ? `
-    <table>
-      <thead><tr><th style="width:70px">Short</th><th>Destination</th><th style="width:50px">Clicks</th><th style="width:55px">Expires</th></tr></thead>
-      <tbody>${linkRows}</tbody>
-    </table>` : '<p class="empty">No active links yet</p>'}
-
     <div class="footer">A <a href="https://considerit.com">Consider IT</a> service</div>
   </div>
-
-  <script>
-    document.querySelectorAll('.link-row').forEach(row => {
-      row.addEventListener('click', async (e) => {
-        if (e.target.tagName === 'A') return;
-        const id = row.dataset.linkId;
-        const detailRow = document.getElementById('details-' + id);
-        if (detailRow.style.display !== 'none') {
-          detailRow.style.display = 'none';
-          return;
-        }
-        detailRow.style.display = '';
-        const div = detailRow.querySelector('.click-details');
-        try {
-          const res = await fetch('/clicks/' + id);
-          const clicks = await res.json();
-          if (clicks.length === 0) {
-            div.innerHTML = 'No clicks yet';
-            return;
-          }
-          div.innerHTML = '<table><thead><tr><th>Time</th><th>Country</th><th>Referrer</th></tr></thead><tbody>'
-            + clicks.map(c => '<tr><td>' + new Date(c.clicked_at).toLocaleString() + '</td><td>' + (c.country || '-') + '</td><td>' + (c.referrer || '-') + '</td></tr>').join('')
-            + '</tbody></table>';
-        } catch { div.innerHTML = 'Failed to load'; }
-      });
-    });
-  </script>
 </body>
 </html>`;
 }
